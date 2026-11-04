@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL
-const REFRESH_INTERVAL_MS = 60_000
+const REFRESH_INTERVAL_MS = 15_000
 
 type PriceRow = {
   Item?: string
@@ -16,10 +16,16 @@ type PriceListResponse = {
 export default function PriceList() {
   const [prices, setPrices] = useState<PriceRow[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [hasPendingUpdate, setHasPendingUpdate] = useState(false)
   const [loading, setLoading] = useState(Boolean(API_URL))
   const [error, setError] = useState<string | null>(
     API_URL ? null : 'The price list API URL is not configured.',
   )
+  const displayedUpdatedAt = useRef<string | null>(null)
+  const pendingData = useRef<{
+    prices: PriceRow[]
+    updatedAt: string | null
+  } | null>(null)
 
   useEffect(() => {
     if (!API_URL) {
@@ -42,15 +48,33 @@ export default function PriceList() {
           | PriceListResponse
           | PriceRow[]
 
-        if (Array.isArray(data)) {
-          setPrices(data)
-        } else {
-          if (!Array.isArray(data.prices)) {
-            throw new Error('The API response does not contain a prices array.')
-          }
+        const nextPrices = Array.isArray(data) ? data : data.prices
+        const nextUpdatedAt = Array.isArray(data)
+          ? null
+          : data.updatedAt ?? null
 
-          setPrices(data.prices)
-          setUpdatedAt(data.updatedAt ?? null)
+        if (!Array.isArray(data) && !Array.isArray(data.prices)) {
+          throw new Error('The API response does not contain a prices array.')
+        }
+
+        if (
+          displayedUpdatedAt.current &&
+          nextUpdatedAt &&
+          displayedUpdatedAt.current !== nextUpdatedAt
+        ) {
+          pendingData.current = {
+            prices: nextPrices,
+            updatedAt: nextUpdatedAt,
+          }
+          setHasPendingUpdate(true)
+        } else if (!displayedUpdatedAt.current || !nextUpdatedAt) {
+          setPrices(nextPrices)
+          setUpdatedAt(nextUpdatedAt)
+          displayedUpdatedAt.current = nextUpdatedAt
+        }
+
+        if (!Array.isArray(data)) {
+          setUpdatedAt((currentUpdatedAt) => currentUpdatedAt ?? nextUpdatedAt)
         }
 
         setError(null)
@@ -74,6 +98,18 @@ export default function PriceList() {
     }
   }, [])
 
+  const refreshPrices = () => {
+    if (!pendingData.current) {
+      return
+    }
+
+    setPrices(pendingData.current.prices)
+    setUpdatedAt(pendingData.current.updatedAt)
+    displayedUpdatedAt.current = pendingData.current.updatedAt
+    pendingData.current = null
+    setHasPendingUpdate(false)
+  }
+
   return (
     <main className="price-list">
       <header className="price-list__header">
@@ -87,6 +123,14 @@ export default function PriceList() {
               }).format(new Date(updatedAt))}`
             : '.'}
         </p>
+        {hasPendingUpdate && (
+            <div className="update-notice" role="status">
+              <span>New prices are available.</span>
+              <button type="button" onClick={refreshPrices}>
+                Refresh list
+              </button>
+            </div>
+        )}
       </header>
 
       {loading ? (

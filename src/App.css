@@ -30,6 +30,40 @@ h1 {
   font-size: 1rem;
 }
 
+.update-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid #e4b84a;
+  border-radius: 999px;
+  background: #fff8df;
+  color: #705300;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.update-notice button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #b8860b;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.update-notice button:hover {
+  background: #947009;
+}
+
+.update-notice button:focus-visible {
+  outline: 2px solid #705300;
+  outline-offset: 2px;
+}
+
 .table-wrapper {
   overflow-x: auto;
   border: 1px solid #dfe3e6;
