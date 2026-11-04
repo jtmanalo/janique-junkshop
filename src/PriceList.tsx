@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL
+const REFRESH_INTERVAL_MS = 60_000
 
 type PriceRow = {
   Item?: string
@@ -25,44 +26,59 @@ export default function PriceList() {
       return
     }
 
-    fetch(API_URL)
-      .then((response) => {
+    const loadPrices = async () => {
+      try {
+        const separator = API_URL.includes('?') ? '&' : '?'
+        const response = await fetch(
+          `${API_URL}${separator}_=${Date.now()}`,
+          { cache: 'no-store' },
+        )
+
         if (!response.ok) {
           throw new Error(`Request failed with status ${response.status}`)
         }
-        return response.json() as Promise<PriceListResponse | PriceRow[]>
-      })
-      .then((data) => {
+
+        const data = (await response.json()) as
+          | PriceListResponse
+          | PriceRow[]
+
         if (Array.isArray(data)) {
           setPrices(data)
-          return
+        } else {
+          if (!Array.isArray(data.prices)) {
+            throw new Error('The API response does not contain a prices array.')
+          }
+
+          setPrices(data.prices)
+          setUpdatedAt(data.updatedAt ?? null)
         }
 
-        if (!Array.isArray(data.prices)) {
-          throw new Error('The API response does not contain a prices array.')
-        }
-
-        setPrices(data.prices)
-        setUpdatedAt(data.updatedAt ?? null)
-      })
-      .catch((error: unknown) => {
+        setError(null)
+      } catch (error: unknown) {
         console.error('Error fetching prices:', error)
         setError(
           error instanceof Error
             ? `Unable to load the latest prices: ${error.message}`
             : 'Unable to load the latest prices.',
         )
-      })
-      .finally(() => {
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+
+    void loadPrices()
+    const refreshTimer = window.setInterval(loadPrices, REFRESH_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(refreshTimer)
+    }
   }, [])
 
   return (
     <main className="price-list">
       <header className="price-list__header">
         <p className="eyebrow">JANIQUE JUNKSHOP</p>
-        <h1>Price List</h1>
+        <h1>Janique Price List</h1>
         <p className="subtitle">
           {updatedAt
             ? ` as of ${new Intl.DateTimeFormat(undefined, {
