@@ -114,7 +114,7 @@ export default function PriceList() {
     <main className="price-list">
       <header className="price-list__header">
         <p className="eyebrow">JANIQUE JUNKSHOP</p>
-        <h1>Janique Price List</h1>
+        <h1>Price List</h1>
         <p className="subtitle">
           {updatedAt
             ? ` as of ${new Intl.DateTimeFormat(undefined, {
